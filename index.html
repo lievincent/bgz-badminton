@@ -1,0 +1,81 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Funminton Americano</title>
+<style>
+:root{--bg:#fff;--fg:#1a1a1a;--mut:#667;--card:#f2f4f7;--ac:#0b57d0;--gd:#fff3c4;box-sizing:border-box;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121316;--fg:#eee;--mut:#9aa;--card:#1e2126;--ac:#7fb0ff;--gd:#4a3f10;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121316;--fg:#eee;--mut:#9aa;--card:#1e2126;--ac:#7fb0ff;--gd:#4a3f10;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px system-ui,sans-serif;padding:12px;max-width:640px;margin:auto}
+h2{font-size:16px;margin:18px 0 8px}.c{background:var(--card);border-radius:12px;padding:12px;margin-bottom:10px}
+input,textarea,button{font:inherit;color:inherit}input,textarea{background:var(--bg);border:1px solid #8884;border-radius:8px;padding:6px;width:100%}
+button{background:var(--ac);color:var(--bg);border:0;border-radius:10px;padding:10px 14px;font-weight:600}button.g{background:#8883;color:var(--fg)}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>label{flex:1;min-width:70px;font-size:12px;color:var(--mut)}
+.chip{display:inline-block;margin:2px;padding:5px 9px;border-radius:99px;background:var(--bg);border:1px solid #8884;font-size:13px}.chip.off{opacity:.35;text-decoration:line-through}
+.m{display:grid;grid-template-columns:1fr 54px;gap:4px 8px;align-items:center;padding:8px 0;border-top:1px solid #8883}.m b{font-size:12px;color:var(--mut)}
+#t{font-size:44px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums}
+#t,#tb{display:none}select{background:var(--bg);color:var(--fg);border:1px solid #8884;border-radius:8px;padding:6px;width:100%;font:inherit}table{width:100%;border-collapse:collapse}td,th{padding:5px 4px;text-align:left;font-size:14px}th{color:var(--mut);font-size:12px}tr.top td{background:var(--gd)}.sc{overflow-x:auto}
+</style></head><body>
+<h2 style="margin-top:4px">🏸 Funminton — Rotasi & Poin</h2>
+<div class="c"><div class="row">
+<label>Jumlah lapangan<input id="co" type="number" inputmode="numeric"></label></div>
+<p id="plan" style="margin:10px 0 0"></p></div>
+<h2>Pemain (tap = hadir/tidak hadir)</h2>
+<div class="c"><div id="chips"></div>
+<textarea id="names" rows="5" placeholder="Satu nama per baris" style="margin-top:8px"></textarea>
+<div class="row" style="margin-top:8px"><button class="g" id="ap">Update nama</button><button class="g" id="sh">🔀 Acak nama</button></div></div>
+<h2>Ronde</h2>
+<div class="c"><div id="t">00:00</div><div id="tb" class="row" style="justify-content:center;margin:6px 0"><button id="st">Mulai</button><button class="g" id="rs">Reset timer</button></div>
+<button id="nx" style="width:100%">➕ Ronde berikutnya</button><button class="g" id="mn" style="width:100%;margin-top:8px">✍️ Ronde manual (samain yang kurang main)</button><div id="mb" hidden></div></div>
+<div id="rounds"></div>
+<h2>🏆 Leaderboard (Top 6 = reward)</h2><div class="c sc" id="board"></div>
+<button class="g" id="rst">Reset semua ronde & skor</button>
+<script>
+const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let S={cfg:{tot:75,gm:10,ch:2,co:4},p:[],r:[]};
+try{const x=localStorage.getItem('fm');if(x)S=JSON.parse(x)}catch(e){}
+S.cfg.pw??=3;S.cfg.pl??=1;if(S.p.length&&!S.r.length&&S.p.every(p=>/^Pemain \d+$/.test(p.n)))S.p=[];
+const save=()=>{try{localStorage.setItem('fm',JSON.stringify(S))}catch(e){}};
+function stats(){const st=S.p.map(()=>({g:0,pt:0,w:0,d:0,sc:0,pr:{},op:{}}));
+S.r.forEach(r=>r.m.forEach(m=>{[[m.a,m.b,m.sa,m.sb],[m.b,m.a,m.sb,m.sa]].forEach(([t,o,s,z])=>t.forEach((i,k)=>{if(typeof i!='number')return;const x=st[i],pa=t[1-k];x.g++;if(typeof pa=='number')x.pr[pa]=(x.pr[pa]||0)+1;o.forEach(j=>{if(typeof j=='number')x.op[j]=(x.op[j]||0)+1});
+if(s!==''&&z!==''){x.pt+=+s;x.d+=s-z;x.sc++;if(+s>+z)x.w++}}))}));return st}
+function gen(){const st=stats(),pres=S.p.map((p,i)=>i).filter(i=>S.p[i].on),slots=Math.min(S.cfg.co*4,pres.length-pres.length%4);
+if(slots<4){alert('Minimal 4 pemain hadir');return}
+const o=pres.map(i=>[i,st[i].g+Math.random()*.9]).sort((a,b)=>a[1]-b[1]).map(x=>x[0]),pl=o.slice(0,slots);let best,bc=1e9;
+for(let t=0;t<400;t++){const q=[...pl].sort(()=>Math.random()-.5);let c=0;
+for(let k=0;k<slots;k+=4){const[a,b,x,y]=q.slice(k,k+4);c+=(st[a].pr[b]||0)*6+(st[x].pr[y]||0)*6;[a,b].forEach(u=>[x,y].forEach(v=>c+=st[u].op[v]||0))}
+if(c<bc){bc=c;best=q}}
+S.r.push({m:Array.from({length:slots/4},(_,k)=>{const q=best.slice(k*4,k*4+4);return{a:[q[0],q[1]],b:[q[2],q[3]],sa:'',sb:''}}),rest:o.slice(slots)});
+save();resetT();draw()}
+const nm=i=>typeof i=='number'?esc(S.p[i].n):esc(i)+' <i>(bantu)</i>';
+function draw(){const c=S.cfg,N=S.p.filter(p=>p.on).length,R=Math.floor(c.tot/(c.gm+c.ch)),sl=Math.min(c.co*4,N-N%4);
+$('plan').innerHTML=`Hadir <b>${N}</b> · ${sl} main/ronde (${sl/4} lapangan terpakai), ${N-sl} istirahat · ronde berjalan: <b>${S.r.length}</b>`;
+$('chips').innerHTML=S.p.map((p,i)=>`<span class="chip ${p.on?'':'off'}" data-i="${i}">${esc(p.n)}</span>`).join('');
+$('rounds').innerHTML=S.r.map((r,ri)=>({r,ri})).reverse().map(({r,ri})=>`<div class="c"><b>Ronde ${ri+1}</b>`+r.m.map((m,mi)=>`<div class="m"><div>Lap ${mi+1}<br>${m.a.map(nm).join(' + ')}</div><input type="number" inputmode="numeric" min="0" max="15" data-r="${ri}" data-m="${mi}" data-s="sa" value="${m.sa}"><div><b>vs</b><br>${m.b.map(nm).join(' + ')}</div><input type="number" inputmode="numeric" min="0" max="15" data-r="${ri}" data-m="${mi}" data-s="sb" value="${m.sb}"></div>`).join('')+(r.rest.length?`<div style="color:var(--mut);font-size:13px;margin-top:6px">Istirahat: ${r.rest.map(nm).join(', ')}</div>`:'')+`</div>`).join('');
+board()}
+function board(){const st=stats(),L=S.p.map((p,i)=>({i,...st[i],a:st[i].sc?st[i].pt/st[i].sc:0})).filter(x=>S.p[x.i].on||x.g).sort((a,b)=>b.pt-a.pt||b.d-a.d||b.w-a.w);
+$('board').innerHTML=`<table><tr><th>#</th><th>Nama</th><th>Main</th><th>Total</th><th>Rata²</th><th>Menang</th></tr>`+L.map((x,k)=>`<tr class="${k<6&&x.sc?'top':''}"><td>${k+1}</td><td>${nm(x.i)}</td><td>${x.sc}</td><td><b>${x.pt}</b></td><td>${x.a.toFixed(1)}</td><td>${x.w}</td></tr>`).join('')+`</table><p style="font-size:12px;color:var(--mut)">Urut: total poin dari skor, lalu selisih skor, lalu jumlah menang. Total paling adil kalau semua pemain main jumlah game yang sama.</p>`}
+document.addEventListener('input',e=>{const d=e.target.dataset;if(d.s){S.r[d.r].m[d.m][d.s]=e.target.value;save();board()}});
+$('chips').onclick=e=>{const i=e.target.dataset.i;if(i!=null){S.p[i].on=!S.p[i].on;save();draw()}};
+[['co','co']].forEach(([id,k])=>{$(id).value=S.cfg[k];$(id).oninput=()=>{S.cfg[k]=Math.max(k=='pw'||k=='pl'||k=='ch'?0:1,+$(id).value||0);save();draw();resetT()}});
+$('names').value=S.p.map(p=>p.n).join('\n');
+$('ap').onclick=()=>{const L=[...new Set($('names').value.split('\n').map(s=>s.trim()).filter(Boolean))],old=S.p;if(!S.r.length)S.p=L.map(n=>({n,on:(old.find(p=>p.n==n)||{on:true}).on}));else{old.forEach(p=>{if(!L.includes(p.n))p.on=false});L.forEach(n=>{if(!old.some(p=>p.n==n))old.push({n,on:true})})}save();draw();$('names').value=S.p.map(p=>p.n).join('\n')};
+$('sh').onclick=()=>{if(S.r.length){alert('Reset ronde dulu kalau mau acak ulang');return}for(let i=S.p.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[S.p[i],S.p[j]]=[S.p[j],S.p[i]]}save();draw();$('names').value=S.p.map(p=>p.n).join('\n')};
+function mbuild(){const st=stats(),pres=S.p.map((p,i)=>i).filter(i=>S.p[i].on).sort((a,b)=>st[a].g-st[b].g||S.p[a].n.localeCompare(S.p[b].n));
+const opt='<option value="">-</option>'+pres.map(i=>`<option value="${i}">${nm(i)} (${st[i].g}x main)</option>`).join('');
+let h='<p style="font-size:13px;color:var(--mut)">Urut dari yang paling sedikit main. Slot boleh kosong. Kalau ganjil, ketik nama pemain bantu (ikut main tapi tidak dihitung poinnya).</p>';
+for(let k=0;k<S.cfg.co;k++)h+=`<div class="m" style="grid-template-columns:1fr 1fr"><b style="grid-column:1/3">Lap ${k+1} (Tim A: atas 2, Tim B: bawah 2)</b>`+[0,1,2,3].map(j=>`<div><select>${opt}</select><input class="hb" placeholder="atau ketik nama bantu" style="margin-top:4px"></div>`).join('')+'</div>';
+h+='<div class="row" style="margin-top:8px"><button class="g" id="mauto">Isi otomatis (paling sedikit main)</button><button id="mok">Buat ronde baru</button><button class="g" id="madd">Tambah ke ronde terakhir</button></div>';
+$('mb').innerHTML=h;$('mb').hidden=false}
+$('mn').onclick=()=>{if($('mb').hidden)mbuild();else $('mb').hidden=true};
+$('mb').onclick=e=>{const id=e.target.id,sel=[...$('mb').querySelectorAll('select')];
+if(id=='mauto'){const st=stats(),o=S.p.map((p,i)=>i).filter(i=>S.p[i].on).map(i=>[i,st[i].g+Math.random()*.9]).sort((a,b)=>a[1]-b[1]).map(x=>x[0]),n=Math.min(sel.length,o.length-o.length%4);sel.forEach((s,k)=>s.value=k<n?o[k]:'')}
+if(id=='mok'||id=='madd'){const ms=[];for(let k=0;k<S.cfg.co;k++){const v=[0,1,2,3].map(j=>{const s=sel[k*4+j],h=s.parentNode.querySelector('.hb').value.trim();return s.value!==''?+s.value:(h||null)});if(v.every(x=>x===null))continue;const a=v.slice(0,2).filter(x=>x!==null),b=v.slice(2).filter(x=>x!==null);if(!a.length||!b.length){alert('Lapangan '+(k+1)+': tiap tim minimal 1 orang');return}ms.push({a,b})}
+const all=ms.flatMap(m=>[...m.a,...m.b]).filter(x=>typeof x=='number');if(!ms.length||new Set(all).size!=all.length){alert('Pilih minimal 1 lapangan, dan tidak boleh ada nama dobel');return}
+const nm2=ms.map(m=>({a:m.a,b:m.b,sa:'',sb:''}));if(id=='madd'){const R=S.r[S.r.length-1];if(!R){alert('Belum ada ronde');return}const inR=R.m.flatMap(m=>[...m.a,...m.b]).filter(x=>typeof x=='number');if(all.some(x=>inR.includes(x))){alert('Ada pemain yang sudah main di ronde terakhir');return}R.m.push(...nm2);const pl=R.m.flatMap(m=>[...m.a,...m.b]).filter(x=>typeof x=='number');R.rest=S.p.map((p,i)=>i).filter(i=>S.p[i].on&&!pl.includes(i))}else S.r.push({m:nm2,rest:S.p.map((p,i)=>i).filter(i=>S.p[i].on&&!all.includes(i))});save();resetT();$('mb').hidden=true;draw()}};
+$('nx').onclick=gen;
+let rt=0;$('rst').onclick=()=>{if(rt){S.r=[];save();draw();$('rst').textContent='Reset semua ronde & skor';rt=0}else{rt=1;$('rst').textContent='Tap lagi untuk yakin';setTimeout(()=>{rt=0;$('rst').textContent='Reset semua ronde & skor'},3000)}};
+let tl=0,tm=null;const fm=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+function resetT(){clearInterval(tm);tm=null;tl=S.cfg.gm*60;$('t').textContent=fm(tl);$('st').textContent='Mulai'}
+function beep(){try{const a=new AudioContext(),o=a.createOscillator();o.connect(a.destination);o.frequency.value=880;o.start();setTimeout(()=>o.stop(),900)}catch(e){}try{navigator.vibrate&&navigator.vibrate([400,150,400])}catch(e){}}
+$('st').onclick=()=>{if(tm){clearInterval(tm);tm=null;$('st').textContent='Lanjut';return}$('st').textContent='Pause';
+tm=setInterval(()=>{tl--;$('t').textContent=fm(Math.max(tl,0));if(tl<=0){clearInterval(tm);tm=null;$('t').textContent='STOP!';$('st').textContent='Mulai';beep()}},1000)};
+$('rs').onclick=resetT;resetT();draw();
+</script></body></html>
